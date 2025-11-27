@@ -1,37 +1,37 @@
 import random
 
-# ---------------------------------------
-# Fixed initial puzzle configuration
-# (Set this to whatever valid puzzle you want)
-# 0 = empty tile
+# ================================
+# FINE-TUNING CONFIG
+# (Aqui você ajusta os parâmetros!)
+# ================================
+USE_INITIAL_STATE = True
+USE_MANHATTAN = True
+
 INITIAL_STATE = [1, 4, 2,
                  3, 5, 0,
                  6, 7, 8]
 
-# Toggle to use the fixed initial puzzle
-USE_INITIAL_STATE = True
-# ---------------------------------------
+GOAL_STATE = [1, 2, 3,
+              4, 5, 6,
+              7, 8, 0]
 
-# Goal state of the 8-puzzle
-GOAL_STATE = [1, 2, 3, 4, 5, 6, 7, 8, 0]
-
-# GA Parameters
 POPULATION_SIZE = 150
-MUTATION_RATE = 0.2
+MUTATION_RATE = 0.1
 MAX_GENERATIONS = 2000
 TOURNAMENT_SIZE = 5
+# ================================
 
-# Toggle to use Manhattan distance instead of misplaced tiles
-USE_MANHATTAN = True
 
-# Map each tile to its goal (row, col) position for Manhattan distance
+# Precomputação das posições do objetivo (para Manhattan)
 GOAL_POSITIONS = {value: (i // 3, i % 3) for i, value in enumerate(GOAL_STATE)}
 
-# Fitness function: misplaced tiles
-def fitness_misplaced(state):
-    return sum([1 for i in range(9) if state[i] != GOAL_STATE[i]])
 
-# Fitness function: Manhattan distance
+# Fitness 1: peças fora do lugar
+def fitness_misplaced(state):
+    return sum(1 for i in range(9) if state[i] != GOAL_STATE[i])
+
+
+# Fitness 2: distância Manhattan
 def fitness_manhattan(state):
     distance = 0
     for i, tile in enumerate(state):
@@ -42,19 +42,15 @@ def fitness_manhattan(state):
         distance += abs(curr_row - goal_row) + abs(curr_col - goal_col)
     return distance
 
-# Unified fitness selector
+
+# Selecionador de fitness: agora baseado no fine-tuning
 def fitness(state):
-    return fitness_manhattan(state) if USE_MANHATTAN else fitness_misplaced(state)
+    if USE_MANHATTAN:
+        return fitness_manhattan(state)
+    return fitness_misplaced(state)
 
-# Generate a random valid 8-puzzle individual
-def generate_individual():
-    state = list(range(9))
-    while True:
-        random.shuffle(state)
-        if is_solvable(state):
-            return state
 
-# Check if a puzzle is solvable
+# Verifica solvabilidade
 def is_solvable(puzzle):
     inv_count = sum(
         1 for i in range(8) for j in range(i + 1, 9)
@@ -62,13 +58,24 @@ def is_solvable(puzzle):
     )
     return inv_count % 2 == 0
 
-# Tournament selection
+
+# Gera indivíduo válido
+def generate_individual():
+    state = list(range(9))
+    while True:
+        random.shuffle(state)
+        if is_solvable(state):
+            return state
+
+
+# Seleção por torneio
 def select_parents(population):
     tournament = random.sample(population, TOURNAMENT_SIZE)
     tournament.sort(key=fitness)
     return tournament[0], tournament[1]
 
-# Crossover: ordered crossover for permutation encoding
+
+# Crossover
 def crossover(parent1, parent2):
     point = random.randint(1, 7)
     child = parent1[:point]
@@ -77,32 +84,33 @@ def crossover(parent1, parent2):
             child.append(gene)
     return child
 
-# Mutation: swap two tiles
+
+# Mutação
 def mutate(individual):
     if random.random() < MUTATION_RATE:
         i, j = random.sample(range(9), 2)
         individual[i], individual[j] = individual[j], individual[i]
 
-# Main GA loop
+
+# Algoritmo Genético
 def genetic_algorithm():
+
     population = []
 
-    # If enabled, manually place the initial puzzle in the population
+    # Se usar estado inicial fixo
     if USE_INITIAL_STATE:
         if not is_solvable(INITIAL_STATE):
-            print("ERROR: The initial state is not solvable!")
+            print("ERROR: Initial state is not solvable!")
             return None
 
-        population.append(INITIAL_STATE.copy())  # Add your fixed initial state
+        population.append(INITIAL_STATE.copy())
 
-        # Fill the rest of the population with random valid puzzles
         while len(population) < POPULATION_SIZE:
             population.append(generate_individual())
     else:
-        # Full random population
         population = [generate_individual() for _ in range(POPULATION_SIZE)]
 
-    # Evolution loop
+    # Loop evolutivo
     for generation in range(MAX_GENERATIONS):
         population.sort(key=fitness)
         best = population[0]
@@ -124,7 +132,8 @@ def genetic_algorithm():
     print("Goal not reached within the generation limit.")
     return None
 
-# Run the GA
+
+# Executa
 if __name__ == "__main__":
     print("=== Genetic Algorithm for 8-Puzzle ===")
     print(f"Using Manhattan Distance: {USE_MANHATTAN}")
